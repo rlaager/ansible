@@ -1113,13 +1113,14 @@ class AnsibleModule(object):
             return True
 
         existing = self.get_file_attributes(b_path)
+        attr_flags = existing.get('attr_flags', '')
 
         attr_mod = '='
         if attributes.startswith(('-', '+')):
             attr_mod = attributes[0]
             attributes = attributes[1:]
 
-        if existing.get('attr_flags', '') != attributes or attr_mod == '-':
+        if attr_flags != attributes or attr_mod == '-':
             attrcmd = self.get_bin_path('chattr')
             if attrcmd:
                 attrcmd = [attrcmd, '%s%s' % (attr_mod, attributes), b_path]
@@ -1128,7 +1129,7 @@ class AnsibleModule(object):
                 if diff is not None:
                     if 'before' not in diff:
                         diff['before'] = {}
-                    diff['before']['attributes'] = existing.get('attr_flags')
+                    diff['before']['attributes'] = attr_flags
                     if 'after' not in diff:
                         diff['after'] = {}
                     diff['after']['attributes'] = '%s%s' % (attr_mod, attributes)
