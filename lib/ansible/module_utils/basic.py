@@ -1119,29 +1119,40 @@ class AnsibleModule(object):
         if attributes.startswith(('-', '+')):
             attr_mod = attributes[0]
             attributes = attributes[1:]
+            attr_flags_set = set(attr_flags)
+            attributes_set = set(attributes)
+            if attr_mod == '-':
+                if not attributes_set & attr_flags_set:
+                    # Removing: none of attributes are in attr_flags.
+                    return changed
+            elif attributes_set <= attr_flags_set:
+                # Adding: all attributes are already in attr_flags.
+                return changed
+        elif attr_flags == attributes:
+            # Setting: the attributes already match exactly.
+            return changed
 
-        if attr_flags != attributes or attr_mod == '-':
-            attrcmd = self.get_bin_path('chattr')
-            if attrcmd:
-                attrcmd = [attrcmd, '%s%s' % (attr_mod, attributes), b_path]
-                changed = True
+        attrcmd = self.get_bin_path('chattr')
+        if attrcmd:
+            attrcmd = [attrcmd, '%s%s' % (attr_mod, attributes), b_path]
+            changed = True
 
-                if diff is not None:
-                    if 'before' not in diff:
-                        diff['before'] = {}
-                    diff['before']['attributes'] = attr_flags
-                    if 'after' not in diff:
-                        diff['after'] = {}
-                    diff['after']['attributes'] = '%s%s' % (attr_mod, attributes)
+            if diff is not None:
+                if 'before' not in diff:
+                    diff['before'] = {}
+                diff['before']['attributes'] = attr_flags
+                if 'after' not in diff:
+                    diff['after'] = {}
+                diff['after']['attributes'] = '%s%s' % (attr_mod, attributes)
 
-                if not self.check_mode:
-                    try:
-                        rc, out, err = self.run_command(attrcmd)
-                        if rc != 0 or err:
-                            raise Exception("Error while setting attributes: %s" % (out + err))
-                    except Exception as e:
-                        self.fail_json(path=to_text(b_path), msg='chattr failed',
-                                       details=to_native(e), exception=traceback.format_exc())
+            if not self.check_mode:
+                try:
+                    rc, out, err = self.run_command(attrcmd)
+                    if rc != 0 or err:
+                        raise Exception("Error while setting attributes: %s" % (out + err))
+                except Exception as e:
+                    self.fail_json(path=to_text(b_path), msg='chattr failed',
+                                   details=to_native(e), exception=traceback.format_exc())
         return changed
 
     def get_file_attributes(self, path):
